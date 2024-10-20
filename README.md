@@ -12,4 +12,8 @@ suited.
 We also designed a front-end UI for ease of use and accessibility. Our intention with the tool is to guide local authorities and policymakers with their decision-making. We sincerely hope that we have achieved this goal to
 the best of our ability. 
 
+To learn more about our design and code, please see the short video below:
+
+https://www.youtube.com/watch?v=wCxU0Cl0itY
+
 From the ICAero Team
