@@ -1,6 +1,9 @@
 # IBMZ Datathon Project
 Repository for files related to IBM Z Datathon 2024.
 
+Link to YouTube video explaining the project:
+https://www.youtube.com/watch?v=wCxU0Cl0itY
+
 Our group (ICAero), a group of aeronautics students from Imperial College London, designed and implemented a machine learning model. The object of our project was to design a piece of software to help decision-makers
 and stakeholders in choosing optimal sites for renewable energy infrastructure construction. We initially focussed specifically on solar energy and solar farms, although there is much scope for broadening to other 
 energy kinds.
