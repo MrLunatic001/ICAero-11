@@ -1,4 +1,4 @@
-# IBMZDataHackathonProject
+# IBMZ Datathon Project
 Repository for files related to IBM Z Datathon 2024.
 
 Our group (ICAero), a group of aeronautics students from Imperial College London, designed and implemented a machine learning model. The object of our project was to design a piece of software to help decision-makers
