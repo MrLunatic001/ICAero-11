@@ -9,7 +9,7 @@ We took into consideration 9 parameters, from land surface temperature, solar ir
 After partitioning the dataset into training and test, we then trained an MLP model to identify optimal sites. The suitability of each site was given on a normalised scale from 0 to 1, with 0 being suitable and 1 being best
 suited.
 
-We also designed a front-end UI for ease of use and accessibility. Our intention with the tool is to guide local authorities and policymakers with their decision-making. We sincerely hope that we have achieved this goal to
+We also designed a front-end UI in the form of a website for ease of use and accessibility. Our intention with the tool is to guide local authorities and policymakers with their decision-making. We sincerely hope that we have achieved this goal to
 the best of our ability. 
 
 From the ICAero Team
