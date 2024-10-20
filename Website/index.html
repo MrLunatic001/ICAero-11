@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renewable Resource Site Finder</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* The next part is too integrate the values of the effectiveness with the fully functional neural network for a better user experience */
+        /* Use flexbox to align sidebar and main content side by side */
+        .content-wrapper {
+            display: flex;
+            height: calc(100vh - 100px); /* Adjust height minus header and footer */
+        }
+
+        .sidebar {
+            background-color: #f9f9f9;
+            width: 23%;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto; /* Add scrolling if sidebar content overflows */
+        }
+
+        .main-content {
+            flex: 1; /* Take up remaining space */
+            padding: 20px;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 500px;
+            margin-top: 20px;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            position: relative;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>Renewable Resource Site Scoring</h1>
+    </header>
+
+    <!-- Content Wrapper with Sidebar and Main Content -->
+    <div class="content-wrapper">
+        <!-- Sidebar for inputs -->
+        <div class="sidebar">
+            <h2>Input Rectangle Coordinates</h2>
+            <label for="topLeftInput">Top Left (Lat,Lng):</label>
+            <input type="text" id="topLeftInput" placeholder="Enter top left lat,lng...">
+
+            <label for="topRightInput">Top Right (Lat,Lng):</label>
+            <input type="text" id="topRightInput" placeholder="Enter top right lat,lng...">
+
+            <label for="bottomRightInput">Bottom Right (Lat,Lng):</label>
+            <input type="text" id="bottomRightInput" placeholder="Enter bottom right lat,lng...">
+
+            <label for="bottomLeftInput">Bottom Left (Lat,Lng):</label>
+            <input type="text" id="bottomLeftInput" placeholder="Enter bottom left lat,lng...">
+
+            <button onclick="updateOutput()">Analyze Site</button>
+
+            <h3>Site Analysis Result:</h3>
+            <p id="output">Enter a rectangle to get started.</p>
+        </div>
+
+        <!-- Main content area for the map -->
+        <div class="main-content">
+            <section>
+                <h2>Explore the Map</h2>
+                <div id="map" class="map-container"></div>
+            </section>
+        </div>
+    </div>
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Renewable Energy Site Finder</p>
+    </footer>
+
+    <script>
+        let map;
+        let rectangles = [];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 2,
+                center: { lat: 0, lng: 0 },
+                mapTypeId: 'roadmap'
+            });
+
+            // Add event listener for map type changes
+            map.addListener('maptypeid_changed', function () {
+                if (map.getMapTypeId() === 'roadmap') {
+                    applyShading();
+                } else {
+                    removeShading();
+                }
+            });
+        }
+
+        // Validate inputs and start the process
+        function updateOutput() {
+            const topLeft = document.getElementById('topLeftInput').value.split(',').map(Number);
+            const topRight = document.getElementById('topRightInput').value.split(',').map(Number);
+            const bottomRight = document.getElementById('bottomRightInput').value.split(',').map(Number);
+            const bottomLeft = document.getElementById('bottomLeftInput').value.split(',').map(Number);
+
+            if (validateInput([topLeft, topRight, bottomRight, bottomLeft])) {
+                document.getElementById('output').innerText = "Analyzing region...";
+
+                // Clear previous rectangles
+                clearRectangles();
+
+                // Batch process grid cells
+                batchProcessGrid(topLeft, topRight, bottomRight, bottomLeft);
+            } else {
+                document.getElementById('output').innerText = "Please enter valid coordinates.";
+            }
+        }
+
+        
+
+        // Make batchProcessGrid async to use await inside the loop
+        function batchProcessGrid(topLeft, topRight, bottomRight, bottomLeft) {
+            const gridData = [];
+            const rows = Math.floor(google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(topLeft[0], topLeft[1]),
+                new google.maps.LatLng(bottomLeft[0], bottomLeft[1])
+            ) / 1000); // 1 km rows
+
+            const cols = Math.floor(google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(topLeft[0], topLeft[1]),
+                new google.maps.LatLng(topRight[0], topRight[1])
+            ) / 1000); // 1 km cols
+
+            const latStep = (topLeft[0] - bottomLeft[0]) / rows;
+            const lngStep = (topRight[1] - topLeft[1]) / cols;
+
+            // Loop through grid cells asynchronously
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const sw = { lat: topLeft[0] - i * latStep, lng: topLeft[1] + j * lngStep };
+                    const ne = { lat: topLeft[0] - (i + 1) * latStep, lng: topLeft[1] + (j + 1) * lngStep };
+
+                    try {
+                        // Await the cost function result
+                        const effectivenessScoreValue =  Math.random();
+
+                        // Push the result into grid data
+                        gridData.push({ sw, ne, effectivenessScoreValue });
+                    } catch (error) {
+                        console.error("Error fetching cost function for cell:", sw, ne, error);
+                    }
+                }
+            }
+
+            renderGrid(gridData);
+
+            // Update effectiveness score display
+            document.getElementById('output').innerHTML = `
+                <p>Effectiveness Score: ${calculateAverageScore(gridData)}</p>
+                <p>Where 0 is the least effective and 1 is the most.</p>
+            `;
+        }
+
+        // Render grid with shading based on effectiveness score
+        function renderGrid(gridData) {
+            gridData.forEach(({ sw, ne, effectivenessScoreValue }) => {
+                const color = getShadingColor(effectivenessScoreValue);
+                const rectangle = new google.maps.Rectangle({
+                    strokeColor: color,
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: color,
+                    fillOpacity: 0.35,
+                    map: map,
+                    bounds: { north: ne.lat, south: sw.lat, east: ne.lng, west: sw.lng }
+                });
+
+                rectangles.push(rectangle);
+            });
+
+            // Fit the map to the entire grid bounds
+            map.fitBounds(new google.maps.LatLngBounds(gridData[0].sw, gridData[gridData.length - 1].ne));
+        }
+
+        // Calculate average effectiveness score for the grid
+        function calculateAverageScore(gridData) {
+            const totalScore = gridData.reduce((sum, cell) => sum + parseFloat(cell.effectivenessScoreValue), 0);
+            return (totalScore / gridData.length).toFixed(3);
+        }
+
+        // Get color for shading based on effectiveness score
+        function getShadingColor(effectivenessScoreValue) {
+            if (effectivenessScoreValue >= 0.8) {
+                return "#00FF00"; // Green
+            } else if (effectivenessScoreValue >= 0.5) {
+                return "#FFFF00"; // Yellow
+            } else {
+                return "#FF0000"; // Red
+            }
+        }
+
+        // Validate inputs
+        function validateInput(coords) {
+            return coords.every(coord => coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]));
+        }
+
+        // Clear rectangles on the map
+        function clearRectangles() {
+            rectangles.forEach(rect => rect.setMap(null));
+            rectangles = [];
+        }
+
+        // Initialize map when the page loads
+        window.onload = function () {
+            initMap();
+        };
+    </script>
+    <!-- Include Google Maps API -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBrLaXm88LtgVDha_eMR3ZxvJHbPKVs8QU&libraries=geometry&callback=initMap">
+    </script>
+
+</body>
+
+</html>
+
